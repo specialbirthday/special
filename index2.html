@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cosmic Birthday for KITTY</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Cormorant+Garamond:ital,wght@0,400;1,300&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: white;
+      font-family: 'Cormorant Garamond', serif;
+      overflow: hidden;
+      touch-action: none;
+      height: 100vh;
+    }
+    canvas { display: block; }
+
+    /* Subtle nebulae */
+    .nebula {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.12;
+    }
+    #neb1 { width: 500px; height: 500px; background: radial-gradient(circle, #8A2BE2, transparent); top: 15%; left: 20%; }
+    #neb2 { width: 600px; height: 600px; background: radial-gradient(circle, #FF69B4, transparent); bottom: 10%; right: 15%; }
+    #neb3 { width: 400px; height: 400px; background: radial-gradient(circle, #1E90FF, transparent); top: 60%; left: 10%; }
+
+    #ui {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      text-align: center; padding: 20px;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.7s;
+      z-index: 20;
+    }
+    #ui.hidden { opacity: 0; }
+
+    .card {
+      background: rgba(4, 6, 20, 0.82);
+      backdrop-filter: blur(18px);
+      border: 1.8px solid rgba(255, 215, 0, 0.35);
+      border-radius: 26px;
+      padding: 28px 36px;
+      max-width: 90%;
+      box-shadow: 0 0 40px rgba(138, 43, 226, 0.4);
+      position: relative;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2rem, 7.5vw, 3.1rem);
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #FFD700, #FFA500, #FF69B4);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 900;
+      letter-spacing: 2px;
+      filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.7));
+    }
+
+    .poem {
+      font-style: italic;
+      line-height: 1.75;
+      margin: 1.2rem 0;
+      font-size: clamp(1rem, 4vw, 1.25rem);
+      color: #fff;
+    }
+
+    .meta {
+      font-size: clamp(0.85rem, 3vw, 1rem);
+      color: rgba(255, 215, 0, 0.85);
+      margin-top: 12px;
+    }
+
+    #tap-hint {
+      position: absolute;
+      bottom: 85px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 8, 25, 0.5);
+      color: rgba(255, 215, 0, 0.9);
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      pointer-events: auto;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      z-index: 25;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: gold;
+      font-family: 'Cinzel', serif;
+      font-size: 1.3rem;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <!-- Soft nebulae -->
+  <div class="nebula" id="neb1"></div>
+  <div class="nebula" id="neb2"></div>
+  <div class="nebula" id="neb3"></div>
+
+  <div class="loading" id="loading">✨ Aligning the cosmos for SHARDA...</div>
+
+  <div id="ui" class="hidden">
+    <div class="card">
+      <h1>✨ KITTY ✨</h1>
+      <div class="poem">
+        On your birthday, October 21,<br>
+        the stars shone just for you.<br>
+        Planets gathered in silent grace—<br>
+        a sky both real and magical.
+      </div>
+      <div class="meta">
+        Real sky map for <strong>October 21, 2025 • 8:00 PM IST</strong><br>
+        Above <strong>Roorkee, India</strong> • 29.87°N, 77.89°E
+      </div>
+    </div>
+  </div>
+
+  <div id="tap-hint">🌌 Tap to explore</div>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="astronomy.js"></script>
+
+  <script>
+    const CONFIG = {
+      name: "SHARDA",
+      year: 2025,
+      month: 10,
+      day: 21,
+      hour: 20,
+      lat: 29.87,
+      lon: 77.89
+    };
+
+    // Bright stars: [RA, Dec, magnitude]
+    const STARS = [
+      [104.72, -60.83, -1.46], // Sirius
+      [213.92, 19.18, 0.03],   // Vega
+      [279.23, 38.75, 1.25],   // Deneb
+      [74.27, 8.87, 0.34],     // Procyon
+      [220.15, -0.20, 0.76],   // Altair
+      [346.55, 57.02, 0.08],   // Capella
+      [250.49, -45.99, -0.74], // Canopus
+      [191.23, 45.78, 1.98],   // Polaris
+      [83.82, 29.09, 0.85],    // Aldebaran
+      [142.52, 57.37, 2.4]     // Menkalinan
+    ];
+
+    let scene, camera, renderer, starField, planetsGroup;
+    let clock = new THREE.Clock();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000106);
+      
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 5);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      createStars();
+      createPlanets();
+
+      document.getElementById('loading').style.display = 'none';
+      setTimeout(() => {
+        document.getElementById('ui').classList.remove('hidden');
+        document.getElementById('tap-hint').style.opacity = '1';
+      }, 700);
+
+      animate();
+      setupEvents();
+    }
+
+    function createStars() {
+      const geometry = new THREE.BufferGeometry();
+      const positions = [];
+      const colors = [];
+      const sizes = [];
+
+      // Add 2000 background stars
+      for (let i = 0; i < 2000; i++) {
+        const r = 30 + Math.random() * 20;
+        const theta = Math.acos(2 * Math.random() - 1);
+        const phi = Math.random() * Math.PI * 2;
+        const x = r * Math.sin(theta) * Math.cos(phi);
+        const y = r * Math.cos(theta);
+        const z = r * Math.sin(theta) * Math.sin(phi);
+        positions.push(x, y, z);
+        
+        const brightness = 0.4 + Math.random() * 0.6;
+        colors.push(brightness, brightness, brightness);
+        sizes.push(0.2 + Math.random() * 0.3);
+      }
+
+      // Add bright named stars
+      STARS.forEach(([ra, dec, mag]) => {
+        const r = 25;
+        const theta = (90 - dec) * Math.PI / 180;
+        const phi = ra * Math.PI / 180;
+        const x = r * Math.sin(theta) * Math.cos(phi);
+        const y = r * Math.cos(theta);
+        const z = r * Math.sin(theta) * Math.sin(phi);
+        positions.push(x, y, z);
+
+        const brightness = Math.max(0.6, (2.0 - mag) / 2.0);
+        // Slightly blue-white for realism
+        colors.push(brightness, brightness * 0.95, brightness * 0.9);
+        sizes.push(0.6 + (2.0 - mag) * 0.3);
+      });
+
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: { time: { value: 0 } },
+        vertexShader: `
+          attribute float size;
+          attribute vec3 color;
+          varying vec3 vColor;
+          varying float vAlpha;
+          uniform float time;
+          void main() {
+            vColor = color;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            float twinkle = 0.7 + 0.4 * sin(time * 3.0 + position.x * 12.0 + position.y * 8.0 + position.z * 5.0);
+            gl_PointSize = size * 500.0 * twinkle / -mvPosition.z;
+            vAlpha = twinkle;
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vColor;
+          varying float vAlpha;
+          void main() {
+            vec2 c = gl_PointCoord - vec2(0.5);
+            float d = length(c);
+            if (d > 0.5) discard;
+            float core = smoothstep(0.5, 0.0, d);
+            float halo = smoothstep(0.8, 0.0, d * 1.6);
+            vec3 col = vColor * (core * 1.8 + halo * 0.6);
+            float alpha = vAlpha * (core * 0.9 + halo * 0.3);
+            gl_FragColor = vec4(col, alpha);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      starField = new THREE.Points(geometry, material);
+      scene.add(starField);
+    }
+
+    function createPlanets() {
+      planetsGroup = new THREE.Group();
+      scene.add(planetsGroup);
+
+      const planets = [
+        { name: 'Venus', color: 0xFFE4B5, radius: 0.08 },
+        { name: 'Mars', color: 0xFF4500, radius: 0.06 },
+        { name: 'Jupiter', color: 0xD2B48C, radius: 0.12 },
+        { name: 'Saturn', color: 0xE6D1A3, radius: 0.10 }
+      ];
+
+      const time = Astronomy.MakeTime(CONFIG.year, CONFIG.month, CONFIG.day, CONFIG.hour, 0, 0);
+
+      planets.forEach(p => {
+        try {
+          const vec = Astronomy.GeoVector(p.name, time, true);
+          if (!vec || !isFinite(vec.x)) return;
+
+          const scale = 0.08; // Reduced scale for realism
+          const pos = new THREE.Vector3(vec.x * scale, vec.y * scale, vec.z * scale);
+
+          // Tiny planet core
+          const core = new THREE.Mesh(
+            new THREE.SphereGeometry(p.radius, 24, 24),
+            new THREE.MeshBasicMaterial({
+              color: p.color,
+              emissive: p.color,
+              emissiveIntensity: 0.9
+            })
+          );
+          core.position.copy(pos);
+          planetsGroup.add(core);
+
+          // Subtle glow (not overpowering)
+          const glow = new THREE.Mesh(
+            new THREE.SphereGeometry(p.radius * 2.2, 16, 16),
+            new THREE.MeshBasicMaterial({
+              color: p.color,
+              transparent: true,
+              opacity: 0.3,
+              blending: THREE.AdditiveBlending
+            })
+          );
+          glow.position.copy(pos);
+          planetsGroup.add(glow);
+
+          // Saturn's ring (very subtle)
+          if (p.name === 'Saturn') {
+            const ring = new THREE.Mesh(
+              new THREE.RingGeometry(p.radius * 2.2, p.radius * 3.0, 32),
+              new THREE.MeshBasicMaterial({
+                color: p.color,
+                transparent: true,
+                opacity: 0.18,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending
+              })
+            );
+            ring.position.copy(pos);
+            ring.rotation.x = Math.PI / 2.3;
+            planetsGroup.add(ring);
+          }
+        } catch (e) {
+          console.warn("Planet error:", p.name);
+        }
+      });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      if (starField && starField.material) {
+        starField.material.uniforms.time.value = t;
+      }
+
+      // Very slow rotation for immersion
+      if (starField) starField.rotation.y += 0.0001;
+      if (planetsGroup) planetsGroup.rotation.y += 0.0001;
+
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+    }
+
+    function setupEvents() {
+      const toggle = () => {
+        const ui = document.getElementById('ui');
+        const hint = document.getElementById('tap-hint');
+        const hidden = ui.classList.contains('hidden');
+        ui.classList.toggle('hidden', !hidden);
+        hint.textContent = hidden ? '🌌 Tap to show' : '🌌 Tap to hide';
+      };
+
+      if ('ontouchstart' in window) {
+        setTimeout(() => {
+          if (!document.getElementById('ui').classList.contains('hidden')) {
+            document.getElementById('ui').classList.add('hidden');
+            document.getElementById('tap-hint').textContent = '🌌 Tap to show';
+          }
+        }, 4000);
+      }
+
+      document.body.addEventListener('click', toggle);
+      document.body.addEventListener('touchstart', e => {
+        if (!e.defaultPrevented) {
+          toggle();
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+
+    if (typeof Astronomy !== 'undefined') {
+      window.addEventListener('load', init);
+    } else {
+      document.getElementById('loading').textContent = "❌ Sky data unavailable";
+    }
+  </script>
+</body>
+</html>
